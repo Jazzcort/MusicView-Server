@@ -17,7 +17,7 @@ struct LonginInfo {
     password: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Serialize)]
 struct LoginSession {
     session_id: String,
     expiration_date: i64,
@@ -114,6 +114,8 @@ async fn login_with_password(
 ) -> impl Responder {
     let collection = state.db.database(APP_NAME).collection::<User>("users");
 
+    dbg!(info.password.to_string());
+
     if let Ok(Some(res)) = collection
         .find_one(doc! { "email": info.email.to_string() }, None)
         .await
@@ -167,7 +169,7 @@ async fn login_with_password(
 
 #[post("/user/loginSession")]
 async fn login_with_session(
-    info: web::Json<LoginSession>,
+    info: web::Json<SessionId>,
     state: web::Data<AppState>,
 ) -> impl Responder {
     let session_collection = state
@@ -175,20 +177,7 @@ async fn login_with_session(
         .database(APP_NAME)
         .collection::<Session>("sessions");
 
-    // if let Some(cookie) = req.cookie("user_session") {
-    //     let session_id = cookie.value();
-    //     if let Ok(Some(session)) = session_collection
-    //         .find_one(
-    //             doc! { "_id": ObjectId::parse_str(session_id).unwrap() },
-    //             None,
-    //         )
-    //         .await
-    //     {
-    //         if Utc::now().timestamp() <= session.expiration_date {
-    //             return HttpResponse::Ok().finish();
-    //         }
-    //     }
-    // }
+    dbg!(&info.session_id);
 
     let object_id = match ObjectId::parse_str(&info.session_id) {
         Ok(id) => id,
@@ -204,6 +193,7 @@ async fn login_with_session(
         )
         .await
     {
+        dbg!(&session);
         if Utc::now().timestamp() <= session.expiration_date {
             return HttpResponse::Ok().finish();
         }
