@@ -8,18 +8,18 @@ use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 use api::{
     create_user, delete_user, email_exists, index, login_with_password, login_with_session, username_exists
 };
-use apis::user::{login, register, get_username};
+use apis::user::{login, register, get_user, search_user};
 use chrono::Utc;
 use collections::{Session, User};
 use mongodb::{bson::doc, options::ClientOptions, options::IndexOptions, Client, IndexModel};
 use std::error::Error;
-use std::option;
 use std::time::Duration;
 use dotenv::dotenv;
 
 const APP_NAME: &str = "musicView";
-const SESSION_LIFE: i64 = 604800;
-const SESSION_CLEANING_FREQUENCY: u64 = 43200;
+const SESSION_LIFE: i64 = 1800;
+const SESSION_LIFE_GUEST: i64 = 86400;
+const SESSION_CLEANING_FREQUENCY: u64 = 1800;
 const SERVER_PORT: u16 = 4000;
 
 struct AppState {
@@ -89,7 +89,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .app_data(app_state.clone())
             .service(login)
             .service(register)
-            .service(get_username)
+            .service(get_user)
+            .service(search_user)
             // .service(email_exists)
             // .service(index)
             // .service(create_user)

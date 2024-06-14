@@ -81,6 +81,7 @@ async fn create_user(info: web::Json<User>, state: web::Data<AppState>) -> impl 
                 username: info.username.to_string(),
                 hash: info.hash.to_string(),
                 salt: info.salt.to_string(),
+                role: Some("Client".to_string())
             },
             None,
         )

@@ -1,15 +1,14 @@
 use crate::collections::Session;
 use crate::{AppState, APP_NAME};
-use crate::{User, SESSION_LIFE};
+use crate::{User, SESSION_LIFE, SESSION_LIFE_GUEST};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
-use actix_web::cookie::Cookie;
-use actix_web::error::ErrorConflict;
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder, Result};
 use chrono::prelude::*;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
 use qstring::QString;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha2::{Digest, Sha256};
 
 #[derive(Deserialize, Debug)]
@@ -101,6 +100,7 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
                 username: info.username.to_string(),
                 hash: hash_res,
                 salt: info.salt.to_string(),
+                role: Some("client".to_string()),
             },
             None,
         )
@@ -112,8 +112,8 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
     HttpResponse::BadRequest().finish()
 }
 
-#[get("users/username")]
-async fn get_username(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
+#[get("users/user_info")]
+async fn get_user(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let query_str = req.query_string();
     let qs = QString::from(query_str);
     if let Some(session_id) = qs.get("session_id") {
@@ -123,16 +123,50 @@ async fn get_username(req: HttpRequest, state: web::Data<AppState>) -> impl Resp
             .collection::<Session>("sessions");
 
         if let Ok(object_id) = ObjectId::parse_str(session_id) {
-            if let Ok(Some(session)) = session_collection.find_one(doc! { "_id": object_id }, None).await {
+            if let Ok(Some(session)) = session_collection
+                .find_one(doc! { "_id": object_id }, None)
+                .await
+            {
                 let user_collection = state.db.database(APP_NAME).collection::<User>("users");
 
-                if let Ok(Some(user)) = user_collection.find_one(doc! {"_id": session.user_id}, None).await {
-                    return HttpResponse::Ok().json(user);
+                if let Ok(Some(user)) = user_collection
+                    .find_one(doc! {"_id": session.user_id}, None)
+                    .await
+                {
+                    let response = json!( {
+                        "username": user.username,
+                        "email": user.email,
+                        "role": user.role.unwrap(),
+                        "id": user.id.unwrap(),
+                    });
+                    return HttpResponse::Ok().json(response);
                 }
             }
             // dbg!(res);
         }
     }
 
+    HttpResponse::BadRequest().finish()
+}
+
+#[get("/users/search_user")]
+async fn search_user(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
+    let query_str = req.query_string();
+    let qs = QString::from(query_str);
+    if let Some(user_id) = qs.get("user_id") {
+        dbg!(user_id);
+        if let Ok(object_id) = ObjectId::parse_str(user_id) {
+            dbg!(&object_id);
+            let user_collection = state.db.database(APP_NAME).collection::<User>("users");
+            if let Ok(Some(user)) = user_collection.find_one(doc! {"_id": object_id}, None).await {
+                dbg!(&user);
+                let res = json!({
+                    "username": user.username,
+                    "id": user.id.unwrap()
+                });
+                return HttpResponse::Ok().json(res);
+            }
+        }
+    }
     HttpResponse::BadRequest().finish()
 }
