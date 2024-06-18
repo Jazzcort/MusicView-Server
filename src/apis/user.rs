@@ -3,6 +3,7 @@ use crate::{AppState, APP_NAME};
 use crate::{User, SESSION_LIFE, SESSION_LIFE_GUEST};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder, Result};
+use actix_web::cookie::{Cookie, SameSite};
 use chrono::prelude::*;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
@@ -23,9 +24,11 @@ struct LoginSession {
     expiration_date: i64,
 }
 
+
 #[post("/users/login")]
-async fn login(info: web::Json<LonginInfo>, state: web::Data<AppState>) -> impl Responder {
+async fn login(req: HttpRequest, info: web::Json<LonginInfo>, state: web::Data<AppState>) -> impl Responder {
     let collection = state.db.database(APP_NAME).collection::<User>("users");
+    dbg!(req);
     dbg!(&info);
     // let mut hasher2 = Sha256::new();
     // hasher2.update(&info.password);
@@ -60,11 +63,15 @@ async fn login(info: web::Json<LonginInfo>, state: web::Data<AppState>) -> impl 
             {
                 let id = object_id.inserted_id.as_object_id().unwrap().to_hex();
 
+                // dbg!(std::env::var("SERVER_DOMAIN").expect("no"));
+
                 // let mut cookie = Cookie::new("user_session", id.clone());
                 // let mut expiration_time = OffsetDateTime::now_utc();
                 // expiration_time += Duration::seconds(SESSION_LIFE);
-                // cookie.set_domain("localhost");
+                // cookie.set_domain(std::env::var("SERVER_DOMAIN").expect("Can't find server_domain"));
                 // cookie.set_expires(expiration_time);
+                // cookie.set_same_site(SameSite::None);
+                // cookie.set_secure(true);
                 // cookie.set_path("/");
                 // cookie.set_http_only(true);
                 let session_json = LoginSession {
@@ -115,6 +122,9 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
 #[get("users/user_info")]
 async fn get_user(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let query_str = req.query_string();
+    // dbg!(&req.cookie("user_session").unwrap().value());
+    // dbg!(&req);
+    // dbg!(&req.cookies());
     let qs = QString::from(query_str);
     if let Some(session_id) = qs.get("session_id") {
         let session_collection = state
@@ -139,7 +149,7 @@ async fn get_user(req: HttpRequest, state: web::Data<AppState>) -> impl Responde
                         "role": user.role.unwrap(),
                         "id": user.id.unwrap(),
                     });
-                    return HttpResponse::Ok().json(response);
+                    return HttpResponse::Ok().append_header(("Access-Control-Allow-Credentials", "true")).append_header(("Access-Control-Allow-Origin", "http://localhost:3000")).json(response);
                 }
             }
             // dbg!(res);
@@ -154,12 +164,12 @@ async fn search_user(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
     let query_str = req.query_string();
     let qs = QString::from(query_str);
     if let Some(user_id) = qs.get("user_id") {
-        dbg!(user_id);
+
         if let Ok(object_id) = ObjectId::parse_str(user_id) {
-            dbg!(&object_id);
+
             let user_collection = state.db.database(APP_NAME).collection::<User>("users");
             if let Ok(Some(user)) = user_collection.find_one(doc! {"_id": object_id}, None).await {
-                dbg!(&user);
+
                 let res = json!({
                     "username": user.username,
                     "id": user.id.unwrap()

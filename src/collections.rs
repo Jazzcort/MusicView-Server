@@ -19,3 +19,13 @@ pub struct Session {
     pub user_id: ObjectId,
     pub expiration_date: i64
 }
+
+#[derive(Serialize, Debug, Deserialize)]
+pub(crate) struct Comment {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub(crate) id: Option<ObjectId>,
+    pub(crate) content: String,
+    pub(crate) author: ObjectId,
+    pub(crate) target_id: String,
+    pub(crate) likes: u64
+}

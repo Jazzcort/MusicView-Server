@@ -1,20 +1,22 @@
 mod api;
+mod apis;
 mod collections;
 mod error;
-mod apis;
 use actix_cors::Cors;
 use actix_web::web::service;
-use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder, http};
+use actix_web::{get, http, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use api::{
-    create_user, delete_user, email_exists, index, login_with_password, login_with_session, username_exists
+    create_user, delete_user, email_exists, index, login_with_password, login_with_session,
+    username_exists,
 };
-use apis::user::{login, register, get_user, search_user};
+use apis::user::{get_user, login, register, search_user};
+use apis::comment::{create_comment, get_comments, delete_comment};
 use chrono::Utc;
 use collections::{Session, User};
+use dotenv::dotenv;
 use mongodb::{bson::doc, options::ClientOptions, options::IndexOptions, Client, IndexModel};
 use std::error::Error;
 use std::time::Duration;
-use dotenv::dotenv;
 
 const APP_NAME: &str = "musicView";
 const SESSION_LIFE: i64 = 1800;
@@ -29,7 +31,19 @@ struct AppState {
 async fn user_collection_init(client: &Client) {
     let options = IndexOptions::builder().unique(true).build();
     let model = IndexModel::builder()
-        .keys(doc! { "username": 1, "email": 1 })
+        .keys(doc! { "username": 1 })
+        .options(options.clone())
+        .build();
+
+    let _collection = client
+        .database(APP_NAME)
+        .collection::<User>("users")
+        .create_index(model, None)
+        .await
+        .expect("creating an index should succeed");
+
+    let model = IndexModel::builder()
+        .keys(doc! { "email": 1 })
         .options(options)
         .build();
 
@@ -75,14 +89,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     HttpServer::new(move || {
         let origin = std::env::var("CLIENT_ORIGIN").expect("Client origin should be set");
         let cors = Cors::default()
-              .allowed_origin(&origin)
+            .allowed_origin(&origin)
+            // .allow_any_origin()
             //   .allowed_origin_fn(|origin, _req_head| {
             //       origin.as_bytes().ends_with(b".rust-lang.org")
             //   })
-              .allowed_methods(vec!["GET", "POST"])
-              .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
-              .allowed_header(http::header::CONTENT_TYPE)
-              .max_age(3600);
+            .allowed_methods(vec!["GET", "POST", "DELETE"])
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                // http::header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                // http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            ])
+            .allowed_header(http::header::CONTENT_TYPE);
+        // .max_age(3600);
 
         App::new()
             .wrap(cors)
@@ -91,13 +111,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(register)
             .service(get_user)
             .service(search_user)
-            // .service(email_exists)
-            // .service(index)
-            // .service(create_user)
-            // .service(username_exists)
-            // .service(login_with_password)
-            // .service(login_with_session)
-            // .service(delete_user)
+            .service(create_comment)
+            .service(get_comments)
+            .service(delete_comment)
+        // .service(email_exists)
+        // .service(index)
+        // .service(create_user)
+        // .service(username_exists)
+        // .service(login_with_password)
+        // .service(login_with_session)
+        // .service(delete_user)
     })
     .keep_alive(Duration::from_secs(25))
     .bind(("0.0.0.0", SERVER_PORT))?
