@@ -2,7 +2,7 @@ use crate::collections::{Comment, Session};
 use crate::{AppState, APP_NAME};
 use crate::{User, SESSION_LIFE};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
-use actix_web::{delete, get, http, post, web, HttpRequest, HttpResponse, Responder, Result};
+use actix_web::{delete, get, http, post, put, web, HttpRequest, HttpResponse, Responder, Result};
 use chrono::prelude::*;
 use futures::{StreamExt, TryStreamExt};
 use mongodb::bson::doc;
@@ -86,23 +86,30 @@ async fn create_comment(
 
 #[delete("/comments")]
 async fn delete_comment(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
-
     let mut is_authenticated = false;
+    let mut user_id = ObjectId::new();
 
     if let Some(session_id) = req.headers().get(http::header::AUTHORIZATION) {
         if let Ok(parseed_id) = session_id.to_str() {
             if let Ok(object_id) = ObjectId::parse_str(parseed_id) {
-                let session_collection = state.db.database(APP_NAME).collection::<Session>("sessions");
-                if let Ok(Some(session)) = session_collection.find_one(doc! {"_id": object_id}, None).await {
+                let session_collection = state
+                    .db
+                    .database(APP_NAME)
+                    .collection::<Session>("sessions");
+                if let Ok(Some(session)) = session_collection
+                    .find_one(doc! {"_id": object_id}, None)
+                    .await
+                {
                     // let user
                     is_authenticated = true;
+                    user_id = session.user_id;
                 }
             }
         }
     }
 
     if !is_authenticated {
-        return HttpResponse::Unauthorized().finish()
+        return HttpResponse::Unauthorized().finish();
     }
 
     let query_str = req.query_string();
@@ -114,12 +121,67 @@ async fn delete_comment(req: HttpRequest, state: web::Data<AppState>) -> impl Re
                 .database(APP_NAME)
                 .collection::<Comment>("comments");
             if let Ok(Some(_)) = comment_collection
-                .find_one_and_delete(doc! {"_id": object_id}, None)
+                .find_one_and_delete(doc! {"_id": object_id, "author": user_id}, None)
                 .await
             {
                 return HttpResponse::Ok().finish();
             }
         }
     }
+    HttpResponse::Unauthorized().finish()
+}
+
+#[put("/comments")]
+async fn update_comment(
+    req: HttpRequest,
+    info: web::Json<Comment>,
+    state: web::Data<AppState>,
+) -> impl Responder {
+    dbg!("hit");
+    dbg!(&info);
+    let mut is_authenticated = false;
+    let mut user_id = ObjectId::new();
+
+    if let Some(session_id) = req.headers().get(http::header::AUTHORIZATION) {
+        if let Ok(parseed_id) = session_id.to_str() {
+            if let Ok(object_id) = ObjectId::parse_str(parseed_id) {
+                let session_collection = state
+                    .db
+                    .database(APP_NAME)
+                    .collection::<Session>("sessions");
+                if let Ok(Some(session)) = session_collection
+                    .find_one(doc! {"_id": object_id}, None)
+                    .await
+                {
+                    // let user
+                    is_authenticated = true;
+                    user_id = session.user_id;
+                }
+            }
+        }
+    }
+
+    if !is_authenticated {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let query_str = req.query_string();
+    let qs = QString::from(query_str);
+    if let Some(comment_id) = qs.get("comment_id") {
+        if let Ok(object_id) = ObjectId::parse_str(comment_id) {
+            let comment_collection = state
+                .db
+                .database(APP_NAME)
+                .collection::<Comment>("comments");
+            if let Ok(Some(_)) = comment_collection
+                .find_one_and_update(doc! {"_id": object_id, "author": user_id}, doc! {"$set": doc!{ "content": info.content.clone() }}, None)
+                .await
+            {
+                return HttpResponse::Ok().finish();
+            }
+        }
+    }
+
+
     HttpResponse::Unauthorized().finish()
 }

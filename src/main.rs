@@ -10,7 +10,7 @@ use api::{
     username_exists,
 };
 use apis::user::{get_user, login, register, search_user};
-use apis::comment::{create_comment, get_comments, delete_comment};
+use apis::comment::{create_comment, get_comments, delete_comment, update_comment};
 use chrono::Utc;
 use collections::{Session, User};
 use dotenv::dotenv;
@@ -94,7 +94,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             //   .allowed_origin_fn(|origin, _req_head| {
             //       origin.as_bytes().ends_with(b".rust-lang.org")
             //   })
-            .allowed_methods(vec!["GET", "POST", "DELETE"])
+            .allowed_methods(vec!["GET", "POST", "DELETE", "PUT"])
             .allowed_headers(vec![
                 http::header::AUTHORIZATION,
                 http::header::ACCEPT,
@@ -114,6 +114,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(create_comment)
             .service(get_comments)
             .service(delete_comment)
+            .service(update_comment)
         // .service(email_exists)
         // .service(index)
         // .service(create_user)
