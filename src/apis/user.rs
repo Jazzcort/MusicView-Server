@@ -107,7 +107,7 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
                 username: info.username.to_string(),
                 hash: hash_res,
                 salt: info.salt.to_string(),
-                role: Some("client".to_string()),
+                role: Some("fan".to_string()),
             },
             None,
         )
