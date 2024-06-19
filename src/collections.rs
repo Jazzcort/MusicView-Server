@@ -45,5 +45,6 @@ pub(crate) struct Like {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub(crate) id: Option<ObjectId>,
     pub(crate) user_id: ObjectId,
-    pub(crate) target_id: ObjectId
+    pub(crate) target_id: ObjectId,
+    pub(crate) target: String
 }

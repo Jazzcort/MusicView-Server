@@ -11,7 +11,7 @@ use api::{
 };
 use apis::reply::{get_replies, create_reply, delete_reply, update_reply};
 use apis::user::{get_user, login, register, search_user};
-use apis::comment::{create_comment, get_comments, delete_comment, update_comment};
+use apis::comment::{create_comment, get_comments, delete_comment, update_comment, find_comment_by_id};
 use apis::like::{create_like, is_like, delete_like};
 use chrono::Utc;
 use collections::{Session, User, Like};
@@ -140,6 +140,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(is_like)
             .service(create_like)
             .service(delete_like)
+            .service(find_comment_by_id)
         // .service(email_exists)
         // .service(index)
         // .service(create_user)

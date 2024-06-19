@@ -37,6 +37,21 @@ async fn get_comments(req: HttpRequest, state: web::Data<AppState>) -> impl Resp
     HttpResponse::BadRequest().finish()
 }
 
+#[get("/comments/{comment_id}")]
+async fn find_comment_by_id(req:HttpRequest, state: web::Data<AppState>) -> impl Responder {
+    if let Some(comment_id) = req.match_info().get("comment_id") {
+        if let Ok(object_id) = ObjectId::parse_str(comment_id) {
+            let commend_collection = state.db.database(APP_NAME).collection::<Comment>("comments");
+
+            if let Ok(Some(comment)) = commend_collection.find_one(doc! {"_id": object_id}, None).await {
+                return HttpResponse::Ok().json(comment);
+            }
+        }
+    }
+
+    HttpResponse::BadRequest().finish()
+}
+
 #[post("/comments")]
 async fn create_comment(
     req: HttpRequest,

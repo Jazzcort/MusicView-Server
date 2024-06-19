@@ -171,6 +171,7 @@ async fn search_user(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
             if let Ok(Some(user)) = user_collection.find_one(doc! {"_id": object_id}, None).await {
 
                 let res = json!({
+                    "role": user.role.unwrap(),
                     "username": user.username,
                     "id": user.id.unwrap()
                 });
