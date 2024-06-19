@@ -28,8 +28,8 @@ struct LoginSession {
 #[post("/users/login")]
 async fn login(req: HttpRequest, info: web::Json<LonginInfo>, state: web::Data<AppState>) -> impl Responder {
     let collection = state.db.database(APP_NAME).collection::<User>("users");
-    dbg!(req);
-    dbg!(&info);
+    // dbg!(req);
+    // dbg!(&info);
     // let mut hasher2 = Sha256::new();
     // hasher2.update(&info.password);
     // let password_hash = format!("{:x}", hasher2.finalize());

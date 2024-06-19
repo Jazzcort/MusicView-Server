@@ -9,10 +9,12 @@ use api::{
     create_user, delete_user, email_exists, index, login_with_password, login_with_session,
     username_exists,
 };
+use apis::reply::{get_replies, create_reply, delete_reply, update_reply};
 use apis::user::{get_user, login, register, search_user};
 use apis::comment::{create_comment, get_comments, delete_comment, update_comment};
+use apis::like::{create_like, is_like, delete_like};
 use chrono::Utc;
-use collections::{Session, User};
+use collections::{Session, User, Like};
 use dotenv::dotenv;
 use mongodb::{bson::doc, options::ClientOptions, options::IndexOptions, Client, IndexModel};
 use std::error::Error;
@@ -55,6 +57,21 @@ async fn user_collection_init(client: &Client) {
         .expect("creating an index should succeed");
 }
 
+async fn like_collection_init(client: &Client) {
+    let options = IndexOptions::builder().unique(true).build();
+    let model = IndexModel::builder()
+        .keys(doc! { "target_id": 1, "user_id": 1 })
+        .options(options)
+        .build();
+
+    let _collection = client
+        .database(APP_NAME)
+        .collection::<Like>("likes")
+        .create_index(model, None)
+        .await
+        .expect("creating an index should succeed");
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
@@ -83,6 +100,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     user_collection_init(&client).await;
+    like_collection_init(&client).await;
 
     let app_state = web::Data::new(AppState { db: client });
 
@@ -115,6 +133,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(get_comments)
             .service(delete_comment)
             .service(update_comment)
+            .service(get_replies)
+            .service(create_reply)
+            .service(delete_reply)
+            .service(update_reply)
+            .service(is_like)
+            .service(create_like)
+            .service(delete_like)
         // .service(email_exists)
         // .service(index)
         // .service(create_user)

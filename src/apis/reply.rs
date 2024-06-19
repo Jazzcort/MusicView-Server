@@ -1,4 +1,4 @@
-use crate::collections::{Comment, Session};
+use crate::collections::{Comment, Reply, Session};
 use crate::{AppState, APP_NAME};
 use crate::{User, SESSION_LIFE};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
@@ -11,36 +11,34 @@ use qstring::QString;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[get("/comments")]
-async fn get_comments(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
+#[get("/replies")]
+async fn get_replies(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let query_str = req.query_string();
     let qs = QString::from(query_str);
 
-    if let Some(target_id) = qs.get("target_id") {
-        let comment_collection = state
-            .db
-            .database(APP_NAME)
-            .collection::<Comment>("comments");
-
-        if let Ok(mut cursor) = comment_collection
-            .find(doc! {"target_id": target_id}, None)
-            .await
-        {
-            let mut comments = vec![];
-            while let Some(Ok(doc)) = cursor.next().await {
-                comments.push(doc);
+    if let Some(comment_id) = qs.get("comment_id") {
+        if let Ok(object_id) = ObjectId::parse_str(comment_id) {
+            let reply_collection = state.db.database(APP_NAME).collection::<Reply>("replies");
+            if let Ok(mut cursor) = reply_collection
+                .find(doc! {"comment_id": object_id}, None)
+                .await
+            {
+                let mut replies = vec![];
+                while let Some(Ok(doc)) = cursor.next().await {
+                    replies.push(doc);
+                }
+                return HttpResponse::Ok().json(replies);
             }
-            return HttpResponse::Ok().json(comments);
         }
     }
 
     HttpResponse::BadRequest().finish()
 }
 
-#[post("/comments")]
-async fn create_comment(
+#[post("replies")]
+async fn create_reply(
     req: HttpRequest,
-    info: web::Json<Comment>,
+    info: web::Json<Reply>,
     state: web::Data<AppState>,
 ) -> impl Responder {
     if let Some(session_id) = req.headers().get(http::header::AUTHORIZATION) {
@@ -50,25 +48,21 @@ async fn create_comment(
                     .db
                     .database(APP_NAME)
                     .collection::<Session>("sessions");
-                if let Ok(Some(_)) = session_collection
+                if let Ok(Some(session)) = session_collection
                     .find_one(doc! {"_id": object_id}, None)
                     .await
                 {
-                    // if let Ok(author_id) = ObjectId::parse_str(info.author.clone()) {
+                    let reply_collection =
+                        state.db.database(APP_NAME).collection::<Reply>("replies");
 
-                    // }
-                    let comment_collection = state
-                        .db
-                        .database(APP_NAME)
-                        .collection::<Comment>("comments");
-                    if let Ok(_) = comment_collection
+                    if let Ok(_) = reply_collection
                         .insert_one(
-                            Comment {
-                                target_id: info.target_id.clone(),
-                                author: info.author.clone(),
-                                likes: info.likes,
-                                content: info.content.clone(),
+                            Reply {
+                                comment_id: info.comment_id.clone(),
                                 id: None,
+                                content: info.content.clone(),
+                                author: session.user_id.clone(),
+                                likes: 0,
                             },
                             None,
                         )
@@ -80,12 +74,11 @@ async fn create_comment(
             }
         }
     }
-
     HttpResponse::Unauthorized().finish()
 }
 
-#[delete("/comments")]
-async fn delete_comment(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
+#[delete("/replies")]
+async fn delete_reply(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let mut is_authenticated = false;
     let mut user_id = ObjectId::new();
 
@@ -114,13 +107,11 @@ async fn delete_comment(req: HttpRequest, state: web::Data<AppState>) -> impl Re
 
     let query_str = req.query_string();
     let qs = QString::from(query_str);
-    if let Some(comment_id) = qs.get("comment_id") {
-        if let Ok(object_id) = ObjectId::parse_str(comment_id) {
-            let comment_collection = state
-                .db
-                .database(APP_NAME)
-                .collection::<Comment>("comments");
-            if let Ok(Some(_)) = comment_collection
+
+    if let Some(reply_id) = qs.get("reply_id") {
+        if let Ok(object_id) = ObjectId::parse_str(reply_id) {
+            let reply_collection = state.db.database(APP_NAME).collection::<Reply>("replies");
+            if let Ok(Some(_)) = reply_collection
                 .find_one_and_delete(doc! {"_id": object_id, "author": user_id}, None)
                 .await
             {
@@ -128,13 +119,14 @@ async fn delete_comment(req: HttpRequest, state: web::Data<AppState>) -> impl Re
             }
         }
     }
+
     HttpResponse::Unauthorized().finish()
 }
 
-#[put("/comments")]
-async fn update_comment(
+#[put("/replies")]
+async fn update_reply(
     req: HttpRequest,
-    info: web::Json<Comment>,
+    info: web::Json<Reply>,
     state: web::Data<AppState>,
 ) -> impl Responder {
     let mut is_authenticated = false;
@@ -151,7 +143,6 @@ async fn update_comment(
                     .find_one(doc! {"_id": object_id}, None)
                     .await
                 {
-                    // let user
                     is_authenticated = true;
                     user_id = session.user_id;
                 }
@@ -165,21 +156,23 @@ async fn update_comment(
 
     let query_str = req.query_string();
     let qs = QString::from(query_str);
-    if let Some(comment_id) = qs.get("comment_id") {
-        if let Ok(object_id) = ObjectId::parse_str(comment_id) {
-            let comment_collection = state
-                .db
-                .database(APP_NAME)
-                .collection::<Comment>("comments");
-            if let Ok(Some(_)) = comment_collection
-                .find_one_and_update(doc! {"_id": object_id, "author": user_id}, doc! {"$set": doc!{ "content": info.content.clone() }}, None)
+
+    if let Some(reply_id) = qs.get("reply_id") {
+        if let Ok(object_id) = ObjectId::parse_str(reply_id) {
+            let reply_collection = state.db.database(APP_NAME).collection::<Reply>("replies");
+            if let Ok(Some(res)) = reply_collection
+                .find_one_and_update(
+                    doc! {"_id": object_id, "author": user_id},
+                    doc! {"$set": doc!{"content": info.content.clone()}},
+                    None,
+                )
                 .await
             {
-                return HttpResponse::Ok().finish();
+                dbg!(res);
+                return HttpResponse::Ok().finish()
             }
         }
     }
-
 
     HttpResponse::Unauthorized().finish()
 }

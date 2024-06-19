@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use mongodb::bson::oid::ObjectId;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct User {
@@ -17,7 +17,7 @@ pub(crate) struct User {
 pub struct Session {
     // session_id: String,
     pub user_id: ObjectId,
-    pub expiration_date: i64
+    pub expiration_date: i64,
 }
 
 #[derive(Serialize, Debug, Deserialize)]
@@ -27,5 +27,23 @@ pub(crate) struct Comment {
     pub(crate) content: String,
     pub(crate) author: ObjectId,
     pub(crate) target_id: String,
-    pub(crate) likes: u64
+    pub(crate) likes: u64,
+}
+
+#[derive(Serialize, Debug, Deserialize)]
+pub(crate) struct Reply {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub(crate) id: Option<ObjectId>,
+    pub(crate) content: String,
+    pub(crate) author: ObjectId,
+    pub(crate) likes: u64,
+    pub(crate) comment_id: ObjectId,
+}
+
+#[derive(Serialize, Debug, Deserialize)]
+pub(crate) struct Like {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub(crate) id: Option<ObjectId>,
+    pub(crate) user_id: ObjectId,
+    pub(crate) target_id: ObjectId
 }
