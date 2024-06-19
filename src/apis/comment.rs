@@ -141,6 +141,13 @@ async fn delete_comment(req: HttpRequest, state: web::Data<AppState>) -> impl Re
             {
                 return HttpResponse::Ok().finish();
             }
+
+            let user_collection = state.db.database(APP_NAME).collection::<User>("users");
+            if let Ok(Some(_)) = user_collection.find_one(doc!{"_id": user_id, "role": "admin".to_string()}, None).await {
+                if let Ok(Some(_)) = comment_collection.find_one_and_delete(doc!{"_id": object_id}, None).await {
+                    return HttpResponse::Ok().finish(); 
+                }
+            }
         }
     }
     HttpResponse::Unauthorized().finish()

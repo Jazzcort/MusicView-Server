@@ -11,6 +11,7 @@ pub(crate) struct User {
     pub(crate) username: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) role: Option<String>,
+    pub(crate) artist_id: Option<String>
 }
 
 #[derive(Debug, Serialize, Deserialize)]

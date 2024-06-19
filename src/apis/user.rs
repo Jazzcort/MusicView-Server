@@ -108,6 +108,8 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
                 hash: hash_res,
                 salt: info.salt.to_string(),
                 role: Some("fan".to_string()),
+                artist_id: None
+
             },
             None,
         )
@@ -171,9 +173,10 @@ async fn search_user(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
             if let Ok(Some(user)) = user_collection.find_one(doc! {"_id": object_id}, None).await {
 
                 let res = json!({
-                    "role": user.role.unwrap(),
+                    "role": user.role,
                     "username": user.username,
-                    "id": user.id.unwrap()
+                    "id": user.id,
+                    "artist_id": user.artist_id,
                 });
                 return HttpResponse::Ok().json(res);
             }

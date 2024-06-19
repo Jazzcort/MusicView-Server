@@ -1,14 +1,11 @@
-mod api;
+
 mod apis;
 mod collections;
 mod error;
 use actix_cors::Cors;
 use actix_web::web::service;
 use actix_web::{get, http, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use api::{
-    create_user, delete_user, email_exists, index, login_with_password, login_with_session,
-    username_exists,
-};
+
 use apis::reply::{get_replies, create_reply, delete_reply, update_reply};
 use apis::user::{get_user, login, register, search_user};
 use apis::comment::{create_comment, get_comments, delete_comment, update_comment, find_comment_by_id};
