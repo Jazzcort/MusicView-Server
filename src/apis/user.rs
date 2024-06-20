@@ -28,12 +28,6 @@ struct LoginSession {
 #[post("/users/login")]
 async fn login(req: HttpRequest, info: web::Json<LonginInfo>, state: web::Data<AppState>) -> impl Responder {
     let collection = state.db.database(APP_NAME).collection::<User>("users");
-    // dbg!(req);
-    // dbg!(&info);
-    // let mut hasher2 = Sha256::new();
-    // hasher2.update(&info.password);
-    // let password_hash = format!("{:x}", hasher2.finalize());
-    // dbg!(password_hash);
 
     if let Ok(Some(res)) = collection
         .find_one(doc! { "email": info.email.to_string() }, None)
@@ -63,8 +57,6 @@ async fn login(req: HttpRequest, info: web::Json<LonginInfo>, state: web::Data<A
             {
                 let id = object_id.inserted_id.as_object_id().unwrap().to_hex();
 
-                // dbg!(std::env::var("SERVER_DOMAIN").expect("no"));
-
                 // let mut cookie = Cookie::new("user_session", id.clone());
                 // let mut expiration_time = OffsetDateTime::now_utc();
                 // expiration_time += Duration::seconds(SESSION_LIFE);
@@ -92,7 +84,6 @@ async fn login(req: HttpRequest, info: web::Json<LonginInfo>, state: web::Data<A
 #[post("/users/register")]
 async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Responder {
     let user_collection = state.db.database(APP_NAME).collection::<User>("users");
-    dbg!(&info);
 
     let mut hasher = Sha256::new();
     let salted_password = info.hash.to_string() + &info.salt;
@@ -124,9 +115,7 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
 #[get("users/user_info")]
 async fn get_user(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let query_str = req.query_string();
-    // dbg!(&req.cookie("user_session").unwrap().value());
-    // dbg!(&req);
-    // dbg!(&req.cookies());
+
     let qs = QString::from(query_str);
     if let Some(session_id) = qs.get("session_id") {
         let session_collection = state
@@ -150,11 +139,11 @@ async fn get_user(req: HttpRequest, state: web::Data<AppState>) -> impl Responde
                         "email": user.email,
                         "role": user.role.unwrap(),
                         "id": user.id.unwrap(),
+                        "artist_id": user.artist_id,
                     });
-                    return HttpResponse::Ok().append_header(("Access-Control-Allow-Credentials", "true")).append_header(("Access-Control-Allow-Origin", "http://localhost:3000")).json(response);
+                    return HttpResponse::Ok().json(response);
                 }
             }
-            // dbg!(res);
         }
     }
 

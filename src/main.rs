@@ -1,17 +1,18 @@
-
 mod apis;
 mod collections;
 mod error;
 use actix_cors::Cors;
 use actix_web::web::service;
 use actix_web::{get, http, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-
-use apis::reply::{get_replies, create_reply, delete_reply, update_reply};
+use apis::comment::{
+    create_comment, delete_comment, find_comment_by_id, get_comments, update_comment,
+};
+use apis::like::{create_like, delete_like, is_like};
+use apis::like_artist::{dislike_artist, is_like_artist, like_artist, get_liked_artists};
+use apis::reply::{create_reply, delete_reply, get_replies, update_reply};
 use apis::user::{get_user, login, register, search_user};
-use apis::comment::{create_comment, get_comments, delete_comment, update_comment, find_comment_by_id};
-use apis::like::{create_like, is_like, delete_like};
 use chrono::Utc;
-use collections::{Session, User, Like};
+use collections::{Like, LikeArtist, Session, User};
 use dotenv::dotenv;
 use mongodb::{bson::doc, options::ClientOptions, options::IndexOptions, Client, IndexModel};
 use std::error::Error;
@@ -69,10 +70,27 @@ async fn like_collection_init(client: &Client) {
         .expect("creating an index should succeed");
 }
 
+async fn like_artist_collection_init(client: &Client) {
+    let options = IndexOptions::builder().unique(true).build();
+    let model = IndexModel::builder()
+        .keys(doc! { "artist_id": 1, "user_id": 1 })
+        .options(options)
+        .build();
+
+    let _collection = client
+        .database(APP_NAME)
+        .collection::<LikeArtist>("like_artists")
+        .create_index(model, None)
+        .await
+        .expect("creating an index should succeed");
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
-    let client = Client::with_uri_str("mongodb://localhost:27017")
+    let mongo_connection_string = std::env::var("MONGO_CONNECTION_STRING").expect("Client origin should be set");
+    dbg!(&mongo_connection_string);
+    let client = Client::with_uri_str(mongo_connection_string)
         .await
         .map_err(|e| format!("Error: {e}"))?;
     let session_collection = client.database(APP_NAME).collection::<Session>("sessions");
@@ -98,6 +116,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     user_collection_init(&client).await;
     like_collection_init(&client).await;
+    like_artist_collection_init(&client).await;
 
     let app_state = web::Data::new(AppState { db: client });
 
@@ -138,6 +157,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(create_like)
             .service(delete_like)
             .service(find_comment_by_id)
+            .service(like_artist)
+            .service(dislike_artist)
+            .service(is_like_artist)
+            .service(get_liked_artists)
         // .service(email_exists)
         // .service(index)
         // .service(create_user)

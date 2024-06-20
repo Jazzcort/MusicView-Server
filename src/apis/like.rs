@@ -16,13 +16,11 @@ use serde_json::json;
 async fn is_like(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {
     let query_str = req.query_string();
     let qs = QString::from(query_str);
-    dbg!(&req);
 
     if let (Some(user_id), Some(target_id)) = (qs.get("user_id"), qs.get("target_id")) {
         if let (Ok(user_object_id), Ok(target_object_id)) =
             (ObjectId::parse_str(user_id), ObjectId::parse_str(target_id))
         {
-            dbg!(&user_object_id, &target_object_id);
             let like_collection = state.db.database(APP_NAME).collection::<Like>("likes");
             if let Ok(Some(_)) = like_collection
                 .find_one(
@@ -78,9 +76,9 @@ async fn create_like(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
     if let (Some(target_id), Some(target)) = (qs.get("target_id"), qs.get("target")) {
         if let Ok(target_object_id) = ObjectId::parse_str(target_id) {
             match target {
-                "comment" | "reply" | "artist" | "album" => {
+                "comment" | "reply" => {
                     let like_collection = state.db.database(APP_NAME).collection::<Like>("likes");
-                    if let Ok(res) = like_collection
+                    if let Ok(_) = like_collection
                         .insert_one(
                             Like {
                                 id: None,

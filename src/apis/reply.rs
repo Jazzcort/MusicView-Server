@@ -176,7 +176,6 @@ async fn update_reply(
                 )
                 .await
             {
-                dbg!(res);
                 return HttpResponse::Ok().finish()
             }
         }
