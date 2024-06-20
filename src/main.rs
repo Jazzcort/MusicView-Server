@@ -89,7 +89,6 @@ async fn like_artist_collection_init(client: &Client) {
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
     let mongo_connection_string = std::env::var("MONGO_CONNECTION_STRING").expect("Client origin should be set");
-    dbg!(&mongo_connection_string);
     let client = Client::with_uri_str(mongo_connection_string)
         .await
         .map_err(|e| format!("Error: {e}"))?;
