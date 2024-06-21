@@ -4,7 +4,7 @@ use crate::{User, SESSION_LIFE};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::{delete, get, http, post, put, web, HttpRequest, HttpResponse, Responder, Result};
 use chrono::prelude::*;
-use futures::{StreamExt, TryStreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
 use qstring::QString;
@@ -162,15 +162,18 @@ async fn get_liked_artists(req: HttpRequest, state: web::Data<AppState>) -> impl
                 .find(doc! {"user_id": user_object_id}, None)
                 .await
             {
+
                 let mut likes = vec![];
                 while let Some(Ok(doc)) = cursor.next().await {
                     likes.push(doc.artist_id);
-                    if likes.len() >= 10 {
-                        break;
-                    }
+
+                }
+                let mut response = vec![];
+                while likes.len() != 0 && response.len() < 10 {
+                    response.push(likes.pop().unwrap());
                 }
 
-                return HttpResponse::Ok().json(likes);
+                return HttpResponse::Ok().json(response);
             }
         }
     }

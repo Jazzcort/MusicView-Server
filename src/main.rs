@@ -8,7 +8,7 @@ use apis::comment::{
     create_comment, delete_comment, find_comment_by_id, get_comments, update_comment,
 };
 use apis::like::{create_like, delete_like, is_like};
-use apis::like_artist::{dislike_artist, is_like_artist, like_artist, get_liked_artists};
+use apis::like_artist::{dislike_artist, get_liked_artists, is_like_artist, like_artist};
 use apis::reply::{create_reply, delete_reply, get_replies, update_reply};
 use apis::user::{get_user, login, register, search_user};
 use chrono::Utc;
@@ -74,7 +74,7 @@ async fn like_artist_collection_init(client: &Client) {
     let options = IndexOptions::builder().unique(true).build();
     let model = IndexModel::builder()
         .keys(doc! { "artist_id": 1, "user_id": 1 })
-        .options(options)
+        .options(options.clone())
         .build();
 
     let _collection = client
@@ -88,7 +88,8 @@ async fn like_artist_collection_init(client: &Client) {
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
-    let mongo_connection_string = std::env::var("MONGO_CONNECTION_STRING").expect("Client origin should be set");
+    let mongo_connection_string =
+        std::env::var("MONGO_CONNECTION_STRING").expect("Client origin should be set");
     let client = Client::with_uri_str(mongo_connection_string)
         .await
         .map_err(|e| format!("Error: {e}"))?;
