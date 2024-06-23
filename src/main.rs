@@ -2,8 +2,7 @@ mod apis;
 mod collections;
 mod error;
 use actix_cors::Cors;
-use actix_web::web::service;
-use actix_web::{get, http, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{http, web, App, HttpServer};
 use apis::comment::{
     create_comment, delete_comment, find_comment_by_id, get_comments, update_comment,
 };
@@ -14,13 +13,12 @@ use apis::user::{get_user, login, register, search_user, update_user};
 use chrono::Utc;
 use collections::{Like, LikeArtist, Session, User};
 use dotenv::dotenv;
-use mongodb::{bson::doc, options::ClientOptions, options::IndexOptions, Client, IndexModel};
+use mongodb::{bson::doc, options::IndexOptions, Client, IndexModel};
 use std::error::Error;
 use std::time::Duration;
 
 const APP_NAME: &str = "musicView";
 const SESSION_LIFE: i64 = 1800;
-const SESSION_LIFE_GUEST: i64 = 86400;
 const SESSION_CLEANING_FREQUENCY: u64 = 1800;
 const SERVER_PORT: u16 = 4000;
 
@@ -124,10 +122,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let origin = std::env::var("CLIENT_ORIGIN").expect("Client origin should be set");
         let cors = Cors::default()
             .allowed_origin(&origin)
-            // .allow_any_origin()
-            //   .allowed_origin_fn(|origin, _req_head| {
-            //       origin.as_bytes().ends_with(b".rust-lang.org")
-            //   })
             .allowed_methods(vec!["GET", "POST", "DELETE", "PUT"])
             .allowed_headers(vec![
                 http::header::AUTHORIZATION,
@@ -162,13 +156,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(is_like_artist)
             .service(get_liked_artists)
             .service(update_user)
-        // .service(email_exists)
-        // .service(index)
-        // .service(create_user)
-        // .service(username_exists)
-        // .service(login_with_password)
-        // .service(login_with_session)
-        // .service(delete_user)
     })
     .keep_alive(Duration::from_secs(25))
     .bind(("0.0.0.0", SERVER_PORT))?

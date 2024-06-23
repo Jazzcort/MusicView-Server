@@ -1,15 +1,10 @@
 use crate::collections::{Comment, Session};
-use crate::{AppState, APP_NAME};
-use crate::{User, SESSION_LIFE};
-use actix_web::cookie::time::{Duration, OffsetDateTime};
-use actix_web::{delete, get, http, post, put, web, HttpRequest, HttpResponse, Responder, Result};
-use chrono::prelude::*;
-use futures::{StreamExt, TryStreamExt};
+use crate::{AppState, APP_NAME, User};
+use actix_web::{delete, get, http, post, put, web, HttpRequest, HttpResponse, Responder};
+use futures::StreamExt;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
 use qstring::QString;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 #[get("/comments")]
 async fn get_comments(req: HttpRequest, state: web::Data<AppState>) -> impl Responder {

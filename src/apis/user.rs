@@ -1,9 +1,7 @@
 use crate::collections::{Session, UserUpdateForm};
 use crate::{AppState, APP_NAME};
-use crate::{User, SESSION_LIFE, SESSION_LIFE_GUEST};
-use actix_web::cookie::time::{Duration, OffsetDateTime};
-use actix_web::cookie::{Cookie, SameSite};
-use actix_web::{get, post, put, web, http, HttpRequest, HttpResponse, Responder, Result};
+use crate::{User, SESSION_LIFE};
+use actix_web::{get, post, put, web, http, HttpRequest, HttpResponse, Responder};
 use chrono::prelude::*;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
