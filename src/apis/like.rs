@@ -103,53 +103,6 @@ async fn create_like(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
                             }
                             _ => {}
                         }
-
-                        // let comment_collection = state
-                        //     .db
-                        //     .database(APP_NAME)
-                        //     .collection::<Comment>("comments");
-                        // let reply_collection =
-                        //     state.db.database(APP_NAME).collection::<Reply>("replies");
-
-                        // let _ = increase_likes_comment(comment_collection, target_object_id).await;
-
-                        // let _ = increase_likes_reply(reply_collection, target_object_id).await;
-
-                        // if let Ok(Some(comment)) = comment_collection
-                        //     .find_one(doc! {"_id": target_object_id}, None)
-                        //     .await
-                        // {
-                        //     let new_value = if comment.likes == 9_223_372_036_854_775_807 {
-                        //         comment.likes
-                        //     } else {
-                        //         comment.likes + 1
-                        //     };
-                        //     let _ = comment_collection
-                        //         .find_one_and_update(
-                        //             doc! {"_id": comment.id},
-                        //             doc! {"$set": doc! {"likes": new_value as i64}},
-                        //             None,
-                        //         )
-                        //         .await;
-                        // }
-
-                        // if let Ok(Some(reply)) = reply_collection
-                        //     .find_one(doc! {"_id": target_object_id}, None)
-                        //     .await
-                        // {
-                        //     let new_value = if reply.likes == 9_223_372_036_854_775_807 {
-                        //         reply.likes
-                        //     } else {
-                        //         reply.likes + 1
-                        //     };
-                        //     let _ = reply_collection
-                        //         .find_one_and_update(
-                        //             doc! {"_id": reply.id},
-                        //             doc! {"$set": doc!{"likes": new_value as i64}},
-                        //             None,
-                        //         )
-                        //         .await;
-                        // }
                         return HttpResponse::Ok().finish();
                     } else {
                         return HttpResponse::BadRequest().finish();
@@ -196,7 +149,7 @@ async fn delete_like(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
     if let (Some(target_id), Some(target)) = (qs.get("target_id"), qs.get("target")) {
         if let Ok(target_object_id) = ObjectId::parse_str(target_id) {
             match target {
-                "comment" | "reply" | "artist" | "album" => {
+                "comment" | "reply" => {
                     let like_collection = state.db.database(APP_NAME).collection::<Like>("likes");
                     if let Ok(Some(res)) = like_collection
                         .find_one_and_delete(
@@ -222,40 +175,6 @@ async fn delete_like(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
                             }
                             _ => {}
                         }
-
-                        // if let Ok(Some(comment)) = comment_collection
-                        //     .find_one(doc! {"_id": res.target_id}, None)
-                        //     .await
-                        // {
-                        //     let new_value = match comment.likes.checked_sub(1) {
-                        //         Some(v) => v,
-                        //         None => 0,
-                        //     };
-                        //     let _ = comment_collection
-                        //         .find_one_and_update(
-                        //             doc! {"_id": comment.id},
-                        //             doc! {"$set": doc! {"likes": new_value as i64}},
-                        //             None,
-                        //         )
-                        //         .await;
-                        // }
-
-                        // if let Ok(Some(reply)) = reply_collection
-                        //     .find_one(doc! {"_id": res.target_id}, None)
-                        //     .await
-                        // {
-                        //     let new_value = match reply.likes.checked_sub(1) {
-                        //         Some(v) => v,
-                        //         None => 0,
-                        //     };
-                        //     let _ = reply_collection
-                        //         .find_one_and_update(
-                        //             doc! {"_id": reply.id},
-                        //             doc! {"$set": doc!{"likes": new_value as i64}},
-                        //             None,
-                        //         )
-                        //         .await;
-                        // }
 
                         return HttpResponse::Ok().finish();
                     } else {
