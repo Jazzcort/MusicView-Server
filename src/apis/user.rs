@@ -1,9 +1,9 @@
-use crate::collections::Session;
+use crate::collections::{Session, UserUpdateForm};
 use crate::{AppState, APP_NAME};
 use crate::{User, SESSION_LIFE, SESSION_LIFE_GUEST};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder, Result};
 use actix_web::cookie::{Cookie, SameSite};
+use actix_web::{get, post, put, web, http, HttpRequest, HttpResponse, Responder, Result};
 use chrono::prelude::*;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
@@ -24,9 +24,12 @@ struct LoginSession {
     expiration_date: i64,
 }
 
-
 #[post("/users/login")]
-async fn login(req: HttpRequest, info: web::Json<LonginInfo>, state: web::Data<AppState>) -> impl Responder {
+async fn login(
+    req: HttpRequest,
+    info: web::Json<LonginInfo>,
+    state: web::Data<AppState>,
+) -> impl Responder {
     let collection = state.db.database(APP_NAME).collection::<User>("users");
 
     if let Ok(Some(res)) = collection
@@ -99,8 +102,7 @@ async fn register(info: web::Json<User>, state: web::Data<AppState>) -> impl Res
                 hash: hash_res,
                 salt: info.salt.to_string(),
                 role: Some("fan".to_string()),
-                artist_id: None
-
+                artist_id: None,
             },
             None,
         )
@@ -155,12 +157,12 @@ async fn search_user(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
     let query_str = req.query_string();
     let qs = QString::from(query_str);
     if let Some(user_id) = qs.get("user_id") {
-
         if let Ok(object_id) = ObjectId::parse_str(user_id) {
-
             let user_collection = state.db.database(APP_NAME).collection::<User>("users");
-            if let Ok(Some(user)) = user_collection.find_one(doc! {"_id": object_id}, None).await {
-
+            if let Ok(Some(user)) = user_collection
+                .find_one(doc! {"_id": object_id}, None)
+                .await
+            {
                 let res = json!({
                     "role": user.role,
                     "username": user.username,
@@ -171,5 +173,66 @@ async fn search_user(req: HttpRequest, state: web::Data<AppState>) -> impl Respo
             }
         }
     }
+    HttpResponse::BadRequest().finish()
+}
+
+#[put("/users")]
+async fn update_user(
+    req: HttpRequest,
+    info: web::Json<UserUpdateForm>,
+    state: web::Data<AppState>,
+) -> impl Responder {
+    let mut is_authenticated = false;
+    let mut user_id = ObjectId::new();
+
+    if let Some(session_id) = req.headers().get(http::header::AUTHORIZATION) {
+        if let Ok(parseed_id) = session_id.to_str() {
+            if let Ok(object_id) = ObjectId::parse_str(parseed_id) {
+                let session_collection = state
+                    .db
+                    .database(APP_NAME)
+                    .collection::<Session>("sessions");
+                if let Ok(Some(session)) = session_collection
+                    .find_one(doc! {"_id": object_id}, None)
+                    .await
+                {
+                    // let user
+                    is_authenticated = true;
+                    user_id = session.user_id;
+                }
+            }
+        }
+    }
+
+    if !is_authenticated {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let user_collection = state.db.database(APP_NAME).collection::<User>("users");
+
+    if let Some(email) = &info.email {
+        if let Ok(Some(res)) = user_collection
+            .find_one_and_update(
+                doc! {"_id": user_id},
+                doc! {"$set": {"email": email.to_string()}},
+                None,
+            )
+            .await
+        {
+            return HttpResponse::Ok().finish();
+        }
+    } else if let Some(username) = &info.username {
+        if let Ok(Some(res)) = user_collection
+            .find_one_and_update(
+                doc! {"_id": user_id},
+                doc! {"$set": {"username": username.to_string()}},
+                None,
+            )
+            .await
+        {
+            return HttpResponse::Ok().finish();
+        }
+    }
+
     HttpResponse::BadRequest().finish()
 }

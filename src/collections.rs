@@ -15,6 +15,12 @@ pub(crate) struct User {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct UserUpdateForm {
+    pub(crate) email: Option<String>,
+    pub(crate) username: Option<String>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Session {
     // session_id: String,
     pub user_id: ObjectId,

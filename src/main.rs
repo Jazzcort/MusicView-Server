@@ -10,7 +10,7 @@ use apis::comment::{
 use apis::like::{create_like, delete_like, is_like};
 use apis::like_artist::{dislike_artist, get_liked_artists, is_like_artist, like_artist};
 use apis::reply::{create_reply, delete_reply, get_replies, update_reply};
-use apis::user::{get_user, login, register, search_user};
+use apis::user::{get_user, login, register, search_user, update_user};
 use chrono::Utc;
 use collections::{Like, LikeArtist, Session, User};
 use dotenv::dotenv;
@@ -161,6 +161,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(dislike_artist)
             .service(is_like_artist)
             .service(get_liked_artists)
+            .service(update_user)
         // .service(email_exists)
         // .service(index)
         // .service(create_user)
