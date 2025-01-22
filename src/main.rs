@@ -2,7 +2,11 @@ mod apis;
 mod collections;
 mod error;
 use actix_cors::Cors;
-use actix_web::{http, web, App, HttpServer};
+use actix_web::{
+    http,
+    middleware::{Compress, Logger},
+    web, App, HttpServer,
+};
 use apis::comment::{
     create_comment, delete_comment, find_comment_by_id, get_comments, update_comment,
 };
@@ -13,8 +17,11 @@ use apis::user::{get_user, login, register, search_user, update_user};
 use chrono::Utc;
 use collections::{Like, LikeArtist, Session, User};
 use dotenv::dotenv;
+use env_logger::Env;
 use mongodb::{bson::doc, options::IndexOptions, Client, IndexModel};
 use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
 use std::time::Duration;
 
 const APP_NAME: &str = "musicView";
@@ -86,6 +93,28 @@ async fn like_artist_collection_init(client: &Client) {
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .unwrap();
+    let cert_file_path = std::env::var("CERT_FILE_PATH").expect("Missing path to cert file");
+    let key_file_path = std::env::var("KEY_FILE_PATH").expect("Missing path to key file");
+    let mut certs_file = BufReader::new(File::open(cert_file_path).unwrap());
+    let mut key_file = BufReader::new(File::open(key_file_path).unwrap());
+    let tls_certs = rustls_pemfile::certs(&mut certs_file)
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file)
+        .next()
+        .unwrap()
+        .unwrap();
+
+    let tls_config = rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(tls_certs, rustls::pki_types::PrivateKeyDer::Pkcs8(tls_key))
+        .unwrap();
+
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
     let mongo_connection_string =
         std::env::var("MONGO_CONNECTION_STRING").expect("Client origin should be set");
     let client = Client::with_uri_str(mongo_connection_string)
@@ -134,6 +163,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // .max_age(3600);
 
         App::new()
+            .wrap(Compress::default())
             .wrap(cors)
             .app_data(app_state.clone())
             .service(login)
@@ -157,9 +187,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(is_like_artist)
             .service(get_liked_artists)
             .service(update_user)
+            .wrap(Logger::default())
     })
     .keep_alive(Duration::from_secs(25))
-    .bind(("localhost", SERVER_PORT))?
+    .bind_rustls_0_23(("0.0.0.0", SERVER_PORT), tls_config)?
     .run()
     .await?;
 
