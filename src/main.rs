@@ -20,7 +20,7 @@ use std::time::Duration;
 const APP_NAME: &str = "musicView";
 const SESSION_LIFE: i64 = 1800;
 const SESSION_CLEANING_FREQUENCY: u64 = 1800;
-const SERVER_PORT: u16 = 4000;
+const SERVER_PORT: u16 = 54321;
 
 struct AppState {
     db: Client,
@@ -120,6 +120,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     HttpServer::new(move || {
         let origin = std::env::var("CLIENT_ORIGIN").expect("Client origin should be set");
+        dbg!(&origin);
         let cors = Cors::default()
             .allowed_origin(&origin)
             .allowed_methods(vec!["GET", "POST", "DELETE", "PUT"])
@@ -158,7 +159,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .service(update_user)
     })
     .keep_alive(Duration::from_secs(25))
-    .bind(("0.0.0.0", SERVER_PORT))?
+    .bind(("localhost", SERVER_PORT))?
     .run()
     .await?;
 
