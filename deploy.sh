@@ -10,6 +10,7 @@ key_file="~/jazzcort.com/jazzcort.pem"
 scp -i $key_file ./target/x86_64-unknown-linux-gnu/release/actix-mongo ${ec2_instance}:./actix-mongo-server/tmp && \
 ssh -i $key_file $ec2_instance << 'ENDSSH'
 sudo -i
+systemctl stop actix-mongo && \
 rm -f "/home/ec2-user/actix-mongo-server/actix-mongo" && \
 mv "/home/ec2-user/actix-mongo-server/tmp" "/home/ec2-user/actix-mongo-server/actix-mongo" && \
 systemctl restart actix-mongo
